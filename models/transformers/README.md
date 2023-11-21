@@ -15,7 +15,6 @@
                      |---PositionwiseFeedForward
                      |---SublayerConnection (Add&Norm)
 ```
-
 其实Transformer的基础模块就三个，分别为MultiHeadAttention, PositionwiseFeedForward, SublayerConnection(Add&Norm)，其中，MaskedMultiHeadAttention 仅仅与MultiHeadAttention的Mask不同而已。<br>
 我们先介绍EncoderLayer包括的子模块，组成EncoderLayer；然后介绍DecoderLayer包括的子模块，组成DecoderLayer。
 
@@ -26,4 +25,5 @@
        mask 在 DecoderLayer 的 MultiHeadAttention 模块中的作用和
 
 参考链接：
- 
+ https://nlp.seas.harvard.edu/2018/04/03/attention.html
+ https://jalammar.github.io/illustrated-transformer/
