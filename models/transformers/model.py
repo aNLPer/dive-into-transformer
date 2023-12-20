@@ -8,7 +8,7 @@ from torch.nn.functional import log_softmax, pad
 # ======= 基础模块 ===== 
 
 def clones(module, N):
-    "Produce N identical layers."
+    "复制模块，注意deepcopy"
     return nn.ModuleList([copy.deepcopy(module) for _ in range(N)])
 
 def subsequent_mask(size):
@@ -20,9 +20,10 @@ def subsequent_mask(size):
     return subsequent_mask == 0
 
 def attention(query, key, value, mask=None, dropout=None):
-    "Compute 'Scaled Dot Product Attention'"
+    "计算'Scaled Dot Product Attention'"
     d_k = query.size(-1)
     scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)
+    # 掩盖掉pad部分字符的相关性分数
     if mask is not None:
         scores = scores.masked_fill(mask == 0, -1e9)
     p_attn = scores.softmax(dim=-1)
@@ -43,32 +44,33 @@ class MultiHeadedAttention(nn.Module):
         self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, query, key, value, mask=None):
-        "Implements Figure 2"
         if mask is not None:
-            # Same mask applied to all h heads.
+            # 增加维度，应用到每个head.
             mask = mask.unsqueeze(1)
         nbatches = query.size(0)
 
-        # 1) Do all the linear projections in batch from d_model => h x d_k
+        # 1) 对 query, key, value 作线性映射
+        # 2）分解成多头 d_model ——> d_h * d_k
         query, key, value = [
-            lin(x).view(nbatches, -1, self.h, self.d_k).transpose(1, 2)
+            lin(x).view(nbatches, -1, self.h, self.d_k).transpose(1, 2) # (nbatches, self.h, -1, self.d_k)
             for lin, x in zip(self.linears, (query, key, value))
         ]
 
-        # 2) Apply attention on all the projected vectors in batch.
+        # 3) 对每个头执行注意力计算
         x, self.attn = attention(
             query, key, value, mask=mask, dropout=self.dropout
         )
 
-        # 3) "Concat" using a view and apply a final linear.
+        # 4) 将每个头的计算结果链接起来.
         x = (
-            x.transpose(1, 2)
+            x.transpose(1, 2)# (nbatches, -1, self.h,  self.d_k)
             .contiguous()
             .view(nbatches, -1, self.h * self.d_k)
         )
         del query
         del key
         del value
+        # 5) 线性映射
         return self.linears[-1](x)
 
 class PositionwiseFeedForward(nn.Module):
@@ -252,9 +254,7 @@ class Generator(nn.Module):
 
 # ================== 模型构建测试 ============
 
-def make_model(
-    src_vocab, tgt_vocab, N=6, d_model=512, d_ff=2048, h=8, dropout=0.1
-):
+def make_model(src_vocab, tgt_vocab, N=6, d_model=512, d_ff=2048, h=8, dropout=0.1):
     "Helper: Construct a model from hyperparameters."
     c = copy.deepcopy
     attn = MultiHeadedAttention(h, d_model)
