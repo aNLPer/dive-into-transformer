@@ -63,7 +63,7 @@ class MultiHeadedAttention(nn.Module):
 
         # 4) 将每个头的计算结果链接起来.
         x = (
-            x.transpose(1, 2)# (nbatches, -1, self.h,  self.d_k)
+            x.transpose(1, 2)# (nbatches, -1, self.h, self.d_k)
             .contiguous()
             .view(nbatches, -1, self.h * self.d_k)
         )
